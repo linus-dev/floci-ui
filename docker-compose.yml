@@ -14,6 +14,7 @@ services:
     environment:
       API_TARGET: http://floci-api:4501
       VITE_USE_POLLING: "true"
+      FLOCI_DEFAULT_REGION: swedencentral
     depends_on:
       - floci-api
     restart: unless-stopped
@@ -64,11 +65,11 @@ services:
 
       FLOCI_AZ_STORAGE_MODE: hybrid
       FLOCI_AZ_STORAGE_PATH: /app/data
+      FLOCI_AZ_TLS_ENABLED: "true"
+      FLOCI_AZ_HOSTNAME: "192.168.50.170"
 
       # Sidecar containers should join the same Docker network
       FLOCI_AZ_SERVICES_DOCKER_NETWORK: floci_default
-
-      FLOCI_AZ_HOSTNAME: floci-az
 
       # --------------------------------------------------
       # Azure Database for PostgreSQL
