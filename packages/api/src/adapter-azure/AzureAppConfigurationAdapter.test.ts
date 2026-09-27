@@ -1,5 +1,6 @@
 import {describe, expect, test} from 'bun:test'
 import type {AzureRuntimeClient, AzureRuntimeFetchOptions} from '../azure'
+import {ConflictError, NotFoundError} from '../cloud-spi/errors'
 import {
     AzureAppConfigurationAdapter,
     makeId,
@@ -22,6 +23,10 @@ describe('AzureAppConfigurationAdapter', () => {
         expect(schema.actions).toEqual(['list', 'create', 'update', 'delete', 'inspect'])
         expect(typeof new AzureAppConfigurationAdapter(testClient({})).update).toBe('function')
         expect(schema.updateFields?.map((field) => field.name)).toEqual(['value', 'contentType'])
+        expect(schema.updateFields?.map((field) => field.valuePath)).toEqual([
+            'metadata.value',
+            'metadata.contentType',
+        ])
         expect(schema.updateFields?.some((field) => field.name === 'key' || field.name === 'label')).toBe(false)
     })
 
@@ -206,7 +211,11 @@ describe('AzureAppConfigurationAdapter', () => {
 
         const updated = await adapter.update(makeId('MyKey', 'Development'), {values: {value: 'new'}})
 
-        expect(updated).toMatchObject({name: 'MyKey', metadata: {label: 'Development', value: 'new'}})
+        expect(updated).toMatchObject({
+            id: makeId('MyKey', 'Development'),
+            name: 'MyKey',
+            metadata: {label: 'Development', value: 'new', contentType: 'application/json', tags: {owner: 'ui'}},
+        })
         expect(calls.map((call) => call.init.method)).toEqual(['GET', 'PUT'])
         expect(calls.every((call) => call.path === path)).toBe(true)
         expect(JSON.parse(String(calls[1].init.body))).toEqual({
@@ -214,6 +223,101 @@ describe('AzureAppConfigurationAdapter', () => {
             content_type: 'application/json',
             tags: {owner: 'ui'},
         })
+    })
+
+    test('updates only content type while preserving the value', async () => {
+        const calls: RecordedCall[] = []
+        const path = '/devstoreaccount1-appconfig/kv/MyKey?api-version=2026-04-01&label=Development'
+        const adapter = new AzureAppConfigurationAdapter(testClient({
+            [path]: [
+                keyValue('MyKey', 'Development', {value: 'keep', content_type: 'text/plain'}),
+                keyValue('MyKey', 'Development', {value: 'keep', content_type: 'application/json'}),
+            ],
+        }, calls))
+
+        const updated = await adapter.update(makeId('MyKey', 'Development'), {
+            values: {contentType: 'application/json'},
+        })
+
+        expect(JSON.parse(String(calls[1].init.body))).toMatchObject({
+            value: 'keep',
+            content_type: 'application/json',
+        })
+        expect(updated.metadata).toMatchObject({value: 'keep', contentType: 'application/json'})
+    })
+
+    test.each(['', null])('clears content type with %p', async (contentType) => {
+        const calls: RecordedCall[] = []
+        const path = '/devstoreaccount1-appconfig/kv/MyKey?api-version=2026-04-01&label=%00'
+        const adapter = new AzureAppConfigurationAdapter(testClient({
+            [path]: [
+                keyValue('MyKey', null, {content_type: 'text/plain'}),
+                keyValue('MyKey', null, {content_type: null}),
+            ],
+        }, calls))
+
+        const updated = await adapter.update(makeId('MyKey', null), {values: {contentType}})
+
+        expect(JSON.parse(String(calls[1].init.body))).toMatchObject({
+            value: 'value',
+            content_type: null,
+        })
+        expect(updated.metadata.contentType).toBeNull()
+    })
+
+    test('updates the selected label without changing another value with the same key', async () => {
+        const calls: RecordedCall[] = []
+        const developmentPath = '/devstoreaccount1-appconfig/kv/Shared?api-version=2026-04-01&label=Development'
+        const productionPath = '/devstoreaccount1-appconfig/kv/Shared?api-version=2026-04-01&label=Production'
+        const adapter = new AzureAppConfigurationAdapter(testClient({
+            [developmentPath]: [
+                keyValue('Shared', 'Development', {value: 'dev'}),
+                keyValue('Shared', 'Development', {value: 'new-dev'}),
+            ],
+            [productionPath]: [
+                keyValue('Shared', 'Production', {value: 'prod'}),
+                keyValue('Shared', 'Production', {value: 'new-prod'}),
+            ],
+        }, calls))
+
+        const development = await adapter.update(makeId('Shared', 'Development'), {values: {value: 'new-dev'}})
+        const production = await adapter.update(makeId('Shared', 'Production'), {values: {value: 'new-prod'}})
+
+        expect(development.id).toBe(makeId('Shared', 'Development'))
+        expect(production.id).toBe(makeId('Shared', 'Production'))
+        expect(calls.map((call) => call.path)).toEqual([
+            developmentPath, developmentPath, productionPath, productionPath,
+        ])
+        expect(JSON.parse(String(calls[1].init.body)).value).toBe('new-dev')
+        expect(JSON.parse(String(calls[3].init.body)).value).toBe('new-prod')
+    })
+
+    test('rejects an update when the key-value does not exist', async () => {
+        const calls: RecordedCall[] = []
+        const adapter = new AzureAppConfigurationAdapter(testClient({}, calls))
+
+        await expect(adapter.update(makeId('Missing', 'Development'), {values: {value: 'new'}}))
+            .rejects.toThrow(NotFoundError)
+        expect(calls.map((call) => call.init.method)).toEqual(['GET'])
+    })
+
+    test('does not bypass a locked key-value update failure', async () => {
+        const calls: RecordedCall[] = []
+        const path = '/devstoreaccount1-appconfig/kv/Locked?api-version=2026-04-01&label=%00'
+        const client = testClient({[path]: keyValue('Locked', null, {locked: true})}, calls)
+        const fetch = client.fetch.bind(client)
+        client.fetch = async (requestPath, init, options) => {
+            if (init.method === 'PUT') {
+                calls.push({path: requestPath, init, options: options ?? {}})
+                throw new ConflictError('Key-value is locked')
+            }
+            return fetch(requestPath, init, options)
+        }
+        const adapter = new AzureAppConfigurationAdapter(client)
+
+        await expect(adapter.update(makeId('Locked', null), {values: {value: 'new'}}))
+            .rejects.toThrow('Key-value is locked')
+        expect(calls.map((call) => call.init.method)).toEqual(['GET', 'PUT'])
     })
 
     test('deletes the exact key and label identity', async () => {

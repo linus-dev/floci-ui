@@ -81,19 +81,19 @@ export class AzureAppConfigurationAdapter implements CloudServiceAdapter {
 
     async update(id: string, input: UpdateResourceInput): Promise<CloudResource> {
         const {key, label} = parseId(id)
-        const current = await this.getKeyValue(key, label)
-        if (!current) throw new NotFoundError(`App Configuration key-value not found: ${key}`)
+        const existing = await this.get(id)
+        if (!existing) throw new NotFoundError(`App Configuration key-value not found: ${key}`)
 
-        const value = Object.hasOwn(input.values, 'value')
+        const value = input.values.value !== undefined
             ? requiredString(input.values.value, 'value', false)
-            : current.value ?? ''
-        const contentType = Object.hasOwn(input.values, 'contentType')
+            : String(existing.metadata.value ?? '')
+        const contentType = input.values.contentType !== undefined
             ? optionalString(input.values.contentType)
-            : current.content_type ?? null
+            : existing.metadata.contentType as string | null
         const body = await this.putKeyValue(key, label, {
             value,
-            ...(contentType ? {content_type: contentType} : {}),
-            ...(current.tags ? {tags: current.tags} : {}),
+            content_type: contentType,
+            tags: existing.metadata.tags as Record<string, string>,
         })
 
         return toResource(body)

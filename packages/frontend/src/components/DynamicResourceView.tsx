@@ -294,9 +294,6 @@ export function DynamicResourceView({
 
       if (typeof rawVal === "string") {
         const trimmed = rawVal.trim();
-        if (!trimmed && !field.required) {
-          continue;
-        }
         const initialStr =
           initialVal !== undefined && initialVal !== null ? String(initialVal).trim() : "";
         if (trimmed !== initialStr) {
