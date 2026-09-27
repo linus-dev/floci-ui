@@ -16,6 +16,7 @@ services:
       VITE_USE_POLLING: "true"
     depends_on:
       - floci-api
+    restart: unless-stopped
     networks:
       - floci_default
 
@@ -28,76 +29,64 @@ services:
     ports:
       - "4501:4501"
     environment:
-      FLOCI_ENDPOINT: http://floci:4566
-      FLOCI_AZURE_ENDPOINT: http://floci-az:4577
-      AWS_REGION: us-east-1
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      FLOCI_GCP_ENDPOINT: http://floci-gcp:4588
-      FLOCI_GCP_PROJECT: floci-local
-      PORT: "4501"
-    depends_on:
-      - floci
-    networks:
-      - floci_default
+      # Custom env-variable from our Azure-only change
+      FLOCI_ENABLED_CLOUDS: azure
 
-  floci:
-    image: floci/floci:latest-compat
-    ports:
-      - "4566:4566"
-    volumes:
-      # Floci runs Lambda functions in throwaway containers, so it needs the host
-      # Docker daemon. Without this, invoke fails with "Failed to start Lambda
-      # container". This grants the emulator control of host Docker — acceptable
-      # for a local dev stack, and the same mount the README's docker run uses.
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/app/data
-      - ./init/ready.d:/etc/floci/init/ready.d:ro
-      - ./init/files:/etc/floci/init/files:ro
-    environment:
-      FLOCI_STORAGE_MODE: persistent
-    networks:
-      floci_default:
-        aliases:
-          - localhost.floci.io
-
-  # Multi-cloud emulators — enabled with the "multicloud" profile:
-  #   docker compose --profile multicloud up
-  floci-az:
-    image: floci/floci-az
-    profiles: ["multicloud"]
-    ports:
-      - "4577:4577"
-    networks:
-      - floci_default
-
-  floci-gcp:
-    image: floci/floci-gcp
-    profiles: ["multicloud"]
-    ports:
-      - "4588:4588"
-    volumes:
-      # Cloud SQL instances are real Postgres containers; see the note on `floci`.
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - floci_default
-
-  floci-seed:
-    build:
-      context: ./init
-      dockerfile: Dockerfile.seed
-    profiles: ["multicloud"]
-    command: ["/bin/sh", "/etc/floci/init/seed-clouds.sh"]
-    volumes:
-      - ./init:/etc/floci/init:ro
-    environment:
+      # Floci AZ
       FLOCI_AZURE_ENDPOINT: http://floci-az:4577
       FLOCI_AZURE_ACCOUNT_NAME: devstoreaccount1
-      FLOCI_GCP_ENDPOINT: http://floci-gcp:4588
-      FLOCI_GCP_PROJECT: floci-local
+
+      PORT: "4501"
+
     depends_on:
       - floci-az
-      - floci-gcp
+    restart: unless-stopped
+    networks:
+      - floci_default
+
+  floci-az:
+    image: floci/floci-az:latest
+    ports:
+      - "4577:4577"
+
+    volumes:
+      # Persist Floci AZ state
+      - ./data/floci-az:/app/data
+
+      # Required because Azure PostgreSQL instances
+      # are spawned as separate Docker containers
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    environment:
+      # --------------------------------------------------
+      # General Floci AZ configuration
+      # --------------------------------------------------
+
+      FLOCI_AZ_STORAGE_MODE: hybrid
+      FLOCI_AZ_STORAGE_PATH: /app/data
+
+      # Sidecar containers should join the same Docker network
+      FLOCI_AZ_SERVICES_DOCKER_NETWORK: floci_default
+
+      FLOCI_AZ_HOSTNAME: floci-az
+
+      # --------------------------------------------------
+      # Azure Database for PostgreSQL
+      # --------------------------------------------------
+
+      FLOCI_AZ_SERVICES_POSTGRES_ENABLED: "true"
+
+      # We want an actual PostgreSQL container,
+      # not management-plane-only emulation
+      FLOCI_AZ_SERVICES_POSTGRES_MOCKED: "false"
+
+      # PostgreSQL 18 + PostGIS 3.6
+      FLOCI_AZ_SERVICES_POSTGRES_IMAGE: imresamu/postgis-arm64:18-3.6-alpine
+
+      # Give PostGIS/PostgreSQL some time to start
+      FLOCI_AZ_SERVICES_POSTGRES_STARTUP_TIMEOUT_SECONDS: "60"
+
+    restart: unless-stopped
     networks:
       - floci_default
 

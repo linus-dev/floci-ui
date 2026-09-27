@@ -34,3 +34,32 @@ export function awsAppConfigSchema(): ServiceSchema {
         columns: applicationColumns,
     }
 }
+
+export function azureAppConfigurationSchema(): ServiceSchema {
+    return {
+        cloud: 'azure',
+        service: 'configuration',
+        displayName: 'App Configuration',
+        fields: [
+            {name: 'key', label: 'Key', type: 'text', required: true},
+            {name: 'value', label: 'Value', type: 'textarea', required: true, span: true},
+            {name: 'label', label: 'Label', type: 'text', required: false},
+            {name: 'contentType', label: 'Content Type', type: 'text', required: false},
+        ],
+        updateFields: [
+            {name: 'value', label: 'Value', type: 'textarea', required: true, span: true, valuePath: 'metadata.value'},
+            {name: 'contentType', label: 'Content Type', type: 'text', required: false, valuePath: 'metadata.contentType'},
+        ],
+        actions: ['list', 'create', 'update', 'delete', 'inspect'],
+        filters: [
+            {name: 'search', label: 'Search', type: 'text', required: false},
+        ],
+        columns: [
+            {name: 'key', label: 'Key', path: 'name'},
+            {name: 'label', label: 'Label', path: 'metadata.label', emptyText: '—'},
+            {name: 'value', label: 'Value', path: 'metadata.value', emptyText: '—'},
+            {name: 'contentType', label: 'Content Type', path: 'metadata.contentType', emptyText: '—'},
+            {name: 'lastModified', label: 'Last Modified', path: 'metadata.lastModified', format: 'datetime', emptyText: '—'},
+        ],
+    }
+}

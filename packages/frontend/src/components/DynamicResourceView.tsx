@@ -38,8 +38,8 @@ import { WorkflowExecutionsPanel } from "@/components/WorkflowExecutionsPanel";
 import { DatabaseSnapshotsPanel } from "@/components/DatabaseSnapshotsPanel";
 import { CreateRdsInstanceForm } from "@/components/CreateRdsInstanceForm";
 import { AppConfigPanel } from "@/components/AppConfigPanel";
+import { AzureAppConfigurationImportPanel } from "@/components/AzureAppConfigurationImportPanel";
 import { KmsCryptoPanel } from "@/components/KmsCryptoPanel";
-import { LogsQueryPanel } from "@/components/LogsQueryPanel";
 import { SageMakerDashboardPanel } from "@/components/SageMakerDashboardPanel";
 
 interface DynamicResourceViewProps {
@@ -65,7 +65,6 @@ export function DynamicResourceView({
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [databaseTab, setDatabaseTab] = useState<"instances" | "snapshots">("instances");
-  const [logsTab, setLogsTab] = useState<"groups" | "insights">("groups");
   const [selected, setSelected] = useState<CloudResource | undefined>();
   const [selectedObject, setSelectedObject] = useState<
     StorageObject | undefined
@@ -81,13 +80,6 @@ export function DynamicResourceView({
   const handleDatabaseTabChange = (tab: "instances" | "snapshots") => {
     setDatabaseTab(tab);
     if (tab === "snapshots") {
-      setSearch("");
-    }
-  };
-
-  const handleLogsTabChange = (tab: "groups" | "insights") => {
-    setLogsTab(tab);
-    if (tab === "insights") {
       setSearch("");
     }
   };
@@ -448,15 +440,13 @@ export function DynamicResourceView({
     canUseRuntime && capabilityEnabled(createCapability);
   const isAwsDatabase = cloud === "aws" && service === "database";
   const showDatabaseSnapshots = isAwsDatabase && databaseTab === "snapshots";
-  const isAwsLogs = cloud === "aws" && service === "logs";
-  const showLogsInsights = isAwsLogs && logsTab === "insights";
 
   return (
     <div className="dynamic-resource-view">
       <TopbarServiceInfo onOpenInfo={onOpenInfo} />
 
       <div
-        className={`resource-workbench${activeSelected && !showDatabaseSnapshots && !showLogsInsights ? " with-inspector" : ""}`}
+        className={`resource-workbench${activeSelected && !showDatabaseSnapshots ? " with-inspector" : ""}`}
       >
         <section className="resource-main">
           {isAwsDatabase && (
@@ -474,25 +464,6 @@ export function DynamicResourceView({
                 onClick={() => handleDatabaseTabChange("snapshots")}
               >
                 Snapshots
-              </button>
-            </div>
-          )}
-
-          {isAwsLogs && (
-            <div className="drawer-tabs" style={{ marginBottom: 12 }}>
-              <button
-                type="button"
-                className={`drawer-tab ${logsTab === "groups" ? "active" : ""}`}
-                onClick={() => handleLogsTabChange("groups")}
-              >
-                Log groups
-              </button>
-              <button
-                type="button"
-                className={`drawer-tab ${logsTab === "insights" ? "active" : ""}`}
-                onClick={() => handleLogsTabChange("insights")}
-              >
-                Logs Insights
               </button>
             </div>
           )}
@@ -518,7 +489,10 @@ export function DynamicResourceView({
                 }}
               />
             )}
-            <section className="table-panel" hidden={showLogsInsights}>
+            {service === "configuration" && cloud === "azure" && (
+              <AzureAppConfigurationImportPanel runtimeReachable={canUseRuntime} />
+            )}
+            <section className="table-panel">
               <div className="input-row resource-table-bar">
                 <div>
                   <p className="eyebrow">Resources</p>
@@ -736,13 +710,8 @@ export function DynamicResourceView({
             </section>
             </>
           )}
-          {isAwsLogs && (
-            <div hidden={!showLogsInsights}>
-              <LogsQueryPanel cloud={cloud} allLogGroups={resources} runtimeReachable={canUseRuntime} />
-            </div>
-          )}
         </section>
-        {activeSelected && !showDatabaseSnapshots && !showLogsInsights && (
+        {activeSelected && !showDatabaseSnapshots && (
           <ResourceInspector
             resource={activeSelected}
             object={selectedObject}

@@ -12,7 +12,6 @@ import {AzureServiceBusAdapter} from './adapter-azure/AzureServiceBusAdapter'
 import {AzureStorageAdapter} from './adapter-azure/AzureStorageAdapter'
 import {AzureAksAdapter} from './adapter-azure/AzureAksAdapter'
 import {AzureComputeAdapter} from './adapter-azure/AzureComputeAdapter'
-import {AzureNetworkingAdapter} from './adapter-azure/AzureNetworkingAdapter'
 import {GcpStorageAdapter} from './adapter-gcp/GcpStorageAdapter'
 import {GcpCloudFunctionsAdapter} from './adapter-gcp/GcpCloudFunctionsAdapter'
 import {GcpCloudSqlAdapter} from './adapter-gcp/GcpCloudSqlAdapter'
@@ -25,6 +24,7 @@ import {AwsSqsAdapter} from './adapter-aws/AwsSqsAdapter'
 import {CloudProxyService} from './service/CloudProxyService'
 import {AzureServerlessAdapter} from './adapter-azure/AzureServerlessAdapter'
 import {AzureKeyVaultAdapter} from './adapter-azure/AzureKeyVaultAdapter'
+import {AzureAppConfigurationAdapter} from './adapter-azure/AzureAppConfigurationAdapter'
 import {AwsServerlessAdapter} from './adapter-aws/AwsServerlessAdapter'
 import {AwsParameterStoreAdapter} from './adapter-aws/AwsParameterStoreAdapter'
 import {AwsKmsAdapter} from './adapter-aws/AwsKmsAdapter'
@@ -85,7 +85,6 @@ export function createCloudAdapterRegistry(accountId?: string | null): CloudAdap
         new AzureAksAdapter(),
         new AzureNoSqlAdapter(),
         new AzureComputeAdapter(),
-        new AzureNetworkingAdapter(),
         new GcpStorageAdapter(),
         new GcpCloudFunctionsAdapter(),
         new GcpCloudSqlAdapter(),
@@ -97,6 +96,7 @@ export function createCloudAdapterRegistry(accountId?: string | null): CloudAdap
         new AwsSqsAdapter(clients.sqs),
         new AzureServerlessAdapter(),
         new AzureKeyVaultAdapter(),
+        new AzureAppConfigurationAdapter(),
     ])
 }
 

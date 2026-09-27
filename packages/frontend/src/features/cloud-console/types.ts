@@ -11,6 +11,13 @@ export interface ConsoleServiceCard {
     meta: string
 }
 
+export interface ProviderBannerProps {
+    cloud: CloudProvider
+    runtimeClass: 'ready' | 'pending' | 'unavailable'
+    runtimeReachable: boolean
+    onOpenStorage: () => void
+}
+
 export interface SummarySectionProps {
     cloud: CloudProvider
     runtimeLabel: string

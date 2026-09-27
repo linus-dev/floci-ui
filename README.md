@@ -60,7 +60,7 @@ cd packages/api && bun run scripts/service-matrix.ts
 | Storage | Storage | Yes (list, create, delete, inspect) | Yes (list, create, delete, inspect) | Yes (list, create, delete, inspect) |
 | Databases | Database | Yes (list, create, update, delete, inspect) | Yes (list, create, delete, inspect) | Yes (list, create, inspect, delete) |
 | Databases | DynamoDB / Cosmos DB NoSQL / NoSQL | Yes (list, create, delete, inspect) | Yes (list, create, delete, inspect) | No |
-| Networking | Networking | Yes (list) | Yes (list, inspect, create, delete) | No |
+| Networking | Networking | Yes (list) | No | No |
 | Networking | ELB / Load Balancing | Yes (list, create, delete, inspect) | No | No |
 | Integration | SQS / Messaging / Pub/Sub | Yes (list, create, inspect, delete) | Yes (list, create, delete, inspect) | Yes (list, create, inspect, delete) |
 | Integration | API Gateway | Yes (list, create, delete, inspect) | No | No |
@@ -70,7 +70,7 @@ cd packages/api && bun run scripts/service-matrix.ts
 | Integration | Cloud Scheduler | No | No | Yes (list, create, delete, inspect) |
 | Integration | Step Functions / Workflows | Yes (list, create, delete, inspect) | No | No |
 | Provisioning | CloudFormation / Infrastructure as Code | Yes (list, create, delete, inspect) | No | No |
-| Provisioning | AppConfig / Configuration | Yes (list, create, delete, inspect) | No | No |
+| Provisioning | AppConfig / Configuration | Yes (list, create, delete, inspect) | Yes (list, create, update, delete, inspect) | No |
 | Security | Identity | Yes (list, create, delete, inspect) | No | No |
 | Security | Secrets Manager / Key Vault / Secret Manager | Yes (list, create, inspect, delete) | Yes (list, create, delete, inspect) | Yes (list, create, inspect, delete) |
 | Security | KMS / Key Management | Yes (list, create, delete, inspect) | No | No |
@@ -200,26 +200,19 @@ Current gaps:
 <details>
 <summary><strong>Networking</strong></summary>
 
-AWS through the unified shell plus an AWS-specific networking panel; Azure
-Virtual Networks through the unified resource table alone.
+AWS only, through the unified shell plus an AWS-specific networking panel.
 
-- AWS: VPC list and inspect through the unified resource table. VPC creation
-  and delete, the VPC wizard, subnets, security groups, internet gateways, NAT
-  gateways, route tables, and Elastic IP workflows — all in the Networking
-  panel.
-- Azure: VNet list, inspect, create and delete through the unified resource
-  table, listed per resource group and normalized as `vpc` alongside AWS VPCs.
-  A duplicate create is rejected rather than silently upserting the existing
-  VNet, and the first subnet's CIDR is validated as contained within the
-  VNet's address space.
+- VPC list and inspect through the unified resource table.
+- VPC creation and delete, the VPC wizard, subnets, security groups, internet
+  gateways, NAT gateways, route tables, and Elastic IP workflows — all in the
+  Networking panel.
 
 Current gaps:
 
-- No GCP VPC adapter yet.
-- AWS create and delete are advertised as `partial` in the unified schema and
-  are handled by the Networking panel, because they need dependent selectors
-  that a flat generic form cannot express. Azure VNets need only a name, a
-  location and an address prefix, so create and delete are `available` there.
+- No Azure VNet or GCP VPC adapter yet.
+- Create and delete are advertised as `partial` in the unified schema and are
+  handled by the Networking panel, because they need dependent selectors that a
+  flat generic form cannot express.
 - Advanced multi-cloud networking normalization is still pending.
 
 </details>
@@ -229,14 +222,13 @@ Current gaps:
 
 AWS only, through the generic identity service category.
 
-- List, inspect, create, and delete IAM users, roles, and customer-managed policies.
-- A `kind` facet (`users` | `roles` | `policies`) narrows the list to one kind at a time; the API accepts it today, and rendering it as a console control is tracked as follow-up frontend work.
-- Roles surface their decoded trust policy; policies surface their default version's decoded document on inspect.
-- IAM paths are supported during creation for all three kinds.
+- List and inspect IAM users.
+- Create and delete IAM users.
+- IAM user paths are supported during creation.
 
 Current gaps:
 
-- Groups, access keys, and other advanced IAM workflows are not exposed yet.
+- Roles, groups, policies, access keys, and other advanced IAM workflows are not exposed yet.
 - No Azure or GCP identity adapter yet.
 
 </details>
@@ -445,7 +437,7 @@ make logs
 
 Prerequisites:
 
-- Node.js 22.22.2+ or 24.15+ (CI uses 24)
+- Node.js 20+
 - pnpm 9+
 - Bun
 - A running local runtime: Floci core, and optionally Floci-AZ / Floci-GCP
