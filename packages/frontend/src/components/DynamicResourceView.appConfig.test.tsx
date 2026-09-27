@@ -55,7 +55,9 @@ describe('Azure App Configuration generic edit dialog', () => {
         const user = userEvent.setup()
         renderView()
 
-        await user.click(await screen.findByRole('button', {name: 'Edit Test:Setting'}))
+        const editButton = await screen.findByRole('button', {name: 'Edit Test:Setting'})
+        expect(editButton).toHaveTextContent('Edit')
+        await user.click(editButton)
 
         expect(screen.getByLabelText(/^Value/)).toHaveValue('first')
         expect(screen.getByLabelText('Content Type')).toHaveValue('text/plain')

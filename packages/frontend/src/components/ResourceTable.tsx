@@ -85,7 +85,7 @@ export function ResourceTable({
               {column.label}
             </th>
           ))}
-          {hasActions && <th aria-label="Actions" />}
+          {hasActions && <th className="table-actions-header" aria-label="Actions" />}
         </tr>
       </thead>
       <tbody>
@@ -128,7 +128,7 @@ export function ResourceTable({
                     )}
                     {canEdit && (
                       <button
-                        className="icon-btn"
+                        className="button compact"
                         type="button"
                         title={`Edit ${resource.name}`}
                         aria-label={`Edit ${resource.name}`}
@@ -138,6 +138,7 @@ export function ResourceTable({
                         }}
                       >
                         <Pencil size={13} />
+                        Edit
                       </button>
                     )}
                     {canDeleteRow && (

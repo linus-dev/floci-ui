@@ -1654,6 +1654,7 @@ pre,
 .resource-main > .table-panel {
     flex: 1;
     min-height: 0;
+    overflow-x: auto;
 }
 
 .resource-main > .drawer-tabs {
@@ -2666,6 +2667,19 @@ pre,
     width: 1%;
     white-space: nowrap;
     text-align: right;
+}
+
+.resource-table .table-actions-header,
+.resource-table .table-actions {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--elevated);
+    box-shadow: -1px 0 var(--border);
+}
+
+.resource-table tr.selected .table-actions {
+    background: var(--link-tint);
 }
 
 .table-actions-group {
