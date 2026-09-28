@@ -14,7 +14,7 @@ services:
     environment:
       API_TARGET: http://floci-api:4501
       VITE_USE_POLLING: "true"
-      FLOCI_DEFAULT_REGION: swedencentral
+      FLOCI_DEFAULT_REGION: "swedencentral"
     depends_on:
       - floci-api
     restart: unless-stopped
