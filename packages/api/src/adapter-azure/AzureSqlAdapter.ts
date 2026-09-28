@@ -78,6 +78,7 @@ export class AzureSqlAdapter implements CloudServiceAdapter {
     constructor(
         private readonly client: AzureRuntimeClient = azure,
         private readonly dataClient: SqlDataClient = new MssqlDataClient(),
+        private readonly subscriptionId: string = azureSubscriptionId(),
     ) {}
 
     schema(): ServiceSchema {
@@ -85,13 +86,13 @@ export class AzureSqlAdapter implements CloudServiceAdapter {
     }
 
     async list(query: ResourceQuery = {}): Promise<CloudResource[]> {
-        const body = await this.sqlJson<AzureSqlListResponse>(sqlServersPath(), {method: 'GET'}, true)
+        const body = await this.sqlJson<AzureSqlListResponse>(sqlServersPath(this.subscriptionId), {method: 'GET'}, true)
         return filterBySearch((body?.value ?? []).map(toSqlServerResource), query.search)
     }
 
     async get(id: string): Promise<CloudResource | null> {
         const serverName = sqlServerName(id)
-        const body = await this.sqlJson<AzureSqlRecord>(sqlServerPath(serverName), {method: 'GET'}, true)
+        const body = await this.sqlJson<AzureSqlRecord>(sqlServerPath(this.subscriptionId, serverName), {method: 'GET'}, true)
         return body ? toSqlServerResource(body) : null
     }
 
@@ -106,7 +107,7 @@ export class AzureSqlAdapter implements CloudServiceAdapter {
         if (!administratorLogin) throw new ValidationError('administratorLogin is required')
         if (!administratorLoginPassword) throw new ValidationError('administratorLoginPassword is required')
 
-        const body = await this.sqlJson<AzureSqlRecord>(sqlServerPath(serverName), {
+        const body = await this.sqlJson<AzureSqlRecord>(sqlServerPath(this.subscriptionId, serverName), {
             method: 'PUT',
             body: JSON.stringify({
                 location,
@@ -118,7 +119,7 @@ export class AzureSqlAdapter implements CloudServiceAdapter {
     }
 
     async delete(id: string): Promise<void> {
-        await this.sqlFetch(sqlServerPath(sqlServerName(id)), {method: 'DELETE'})
+        await this.sqlFetch(sqlServerPath(this.subscriptionId, sqlServerName(id)), {method: 'DELETE'})
     }
 
     async listSqlDatabases(serverId: string, connection: SqlConnectionInput): Promise<SqlDatabase[]> {
@@ -206,12 +207,12 @@ export function isSqlServerResourceId(id: string): boolean {
     return id.startsWith(RESOURCE_ID_PREFIX)
 }
 
-function sqlServersPath(): string {
-    return `/subscriptions/${encodeURIComponent(azureSubscriptionId())}/resourceGroups/${encodeURIComponent(azureResourceGroup())}/providers/Microsoft.Sql/servers`
+function sqlServersPath(subscriptionId: string): string {
+    return `/subscriptions/${encodeURIComponent(subscriptionId)}/resourceGroups/${encodeURIComponent(azureResourceGroup())}/providers/Microsoft.Sql/servers`
 }
 
-function sqlServerPath(serverName: string): string {
-    return `${sqlServersPath()}/${encodeURIComponent(serverName)}`
+function sqlServerPath(subscriptionId: string, serverName: string): string {
+    return `${sqlServersPath(subscriptionId)}/${encodeURIComponent(serverName)}`
 }
 
 function sqlServerName(id: string): string {

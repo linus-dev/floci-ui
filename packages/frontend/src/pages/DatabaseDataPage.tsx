@@ -8,27 +8,32 @@ import {AzureSqlPanel} from '@/components/AzureSqlPanel'
 import {CosmosNoSqlPanel} from '@/components/CosmosNoSqlPanel'
 import {DynamoDbTableExplorer} from '@/components/DynamoDbTableExplorer'
 import {useAccountId} from '@/lib/accountStore'
+import {useAzureSubscriptionId} from '@/lib/azureSubscriptionStore'
 import {dataExplorerKind} from '@/lib/dataExplorer'
 import type {CloudProvider} from '@/types/cloud'
 
 export function DatabaseDataPage() {
     const {cloud, service, resourceId} = useParams()
     const accountId = useAccountId()
+    const azureSubscriptionId = useAzureSubscriptionId()
+    const contextId = cloud === 'azure' ? azureSubscriptionId : accountId
     if ((cloud !== 'aws' && cloud !== 'azure' && cloud !== 'gcp') || !service || !resourceId) {
         return <div className="content"><DataNotice title="Invalid data workspace" detail="Check the cloud, service, and resource in this link."/>
             <Link to="/console/aws">Console Home</Link></div>
     }
-    return <DatabaseDataWorkspace key={`${accountId}:${cloud}:${service}:${resourceId}`} cloud={cloud} service={service} resourceId={resourceId}/>
+    return <DatabaseDataWorkspace key={`${contextId}:${cloud}:${service}:${resourceId}`} cloud={cloud} service={service} resourceId={resourceId}/>
 }
 
 function DatabaseDataWorkspace({cloud, service, resourceId}: {cloud: CloudProvider; service: string; resourceId: string}) {
     const accountId = useAccountId()
+    const azureSubscriptionId = useAzureSubscriptionId()
+    const contextId = cloud === 'azure' ? azureSubscriptionId : accountId
     const [searchParams, setSearchParams] = useSearchParams()
     const servicesQuery = useCloudServicesQuery(cloud)
     const statusQuery = useCloudStatusQuery(cloud)
     const descriptor = servicesQuery.data?.find((item) => item.service === service)
     const resourceQuery = useQuery({
-        queryKey: ['cloud-data-resource', accountId, cloud, service, resourceId],
+        queryKey: ['cloud-data-resource', contextId, cloud, service, resourceId],
         queryFn: ({signal}) => getCloudResource(cloud, service, resourceId, signal),
         enabled: descriptor?.availability === 'available' && statusQuery.data?.runtime === 'reachable',
     })

@@ -34,10 +34,7 @@ import type {
  * because a bogus provider 404s with `Unsupported Microsoft.Compute path`.
  *
  * Notes from probing the runtime:
- *  - It does **not** partition by subscription: any subscription id returns the
- *    same resources. The subscription is therefore discovered from
- *    `/subscriptions` and used as a fixed scope; it is never presented as a
- *    selectable scope, which would be fake data.
+ *  - Resources are keyed by subscription and resource group in floci-az.
  *  - Lifecycle verbs genuinely change power state, so they are advertised.
  *  - `create` succeeds with 201 even when the resource group does not exist. Real
  *    Azure answers ResourceGroupNotFound, so this adapter checks first.
@@ -84,7 +81,10 @@ export class AzureComputeAdapter implements CloudServiceAdapter {
 
     private subscriptionId: string | null = null
 
-    constructor(private readonly client: AzureRuntimeClient = azure) {}
+    constructor(
+        private readonly client: AzureRuntimeClient = azure,
+        private readonly selectedSubscriptionId?: string,
+    ) {}
 
     schema(): ServiceSchema {
         return azureComputeSchema()
@@ -173,11 +173,9 @@ export class AzureComputeAdapter implements CloudServiceAdapter {
         await this.client.fetch(`${path}/${action}?api-version=${API_VERSION}`, {method: 'POST'})
     }
 
-    /**
-     * The runtime ignores the subscription id, but a real one keeps the emitted
-     * resource ids honest, so it is discovered once rather than hardcoded.
-     */
+    /** Use the selected subscription, or discover the runtime default. */
     private async subscription(): Promise<string> {
+        if (this.selectedSubscriptionId) return this.selectedSubscriptionId
         if (this.subscriptionId) return this.subscriptionId
 
         const body = await this.json<ArmList<{subscriptionId?: string}>>('/subscriptions')

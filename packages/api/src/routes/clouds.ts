@@ -11,12 +11,14 @@ import {clampLimit, type PageQuery} from '../cloud-spi/childCollections'
 import {CloudError, toHttpError, ValidationError} from '../cloud-spi/errors'
 import {isServiceType} from '../cloud-spi/serviceCatalog'
 import {mapAwsSdkError} from '../adapter-aws/awsErrors'
-import {serviceForAccount} from '../cloudProxy'
+import {serviceForContext} from '../cloudProxy'
+import {isAzureSubscriptionId} from '../azure'
 import {CloudProxyService} from '../service/CloudProxyService'
 
-// Header (and query-param fallback for direct links such as object downloads)
-// used by the frontend to scope every request to an AWS account.
+// Headers (and query-param fallbacks for direct links such as object downloads)
+// carry the active cloud context selected in the frontend.
 export const ACCOUNT_HEADER = 'x-floci-account-id'
+export const AZURE_SUBSCRIPTION_HEADER = 'x-floci-azure-subscription-id'
 
 interface KmsEncryptRequest {
     plaintextBase64?: unknown
@@ -41,10 +43,21 @@ const MAX_CIPHERTEXT_BASE64_LENGTH = 8_192
 export function createCloudRoutes(injectedService?: CloudProxyService) {
     const app = new Hono()
 
-    // Resolve the account-scoped service per request. An explicitly injected
+    app.use('*', async (c, next) => {
+        const subscription = c.req.header(AZURE_SUBSCRIPTION_HEADER) ?? c.req.query('subscription')
+        if (subscription && !isAzureSubscriptionId(subscription)) {
+            return c.json({error: 'Azure subscription ID must be a UUID'}, 400)
+        }
+        await next()
+    })
+
+    // Resolve the selected cloud context per request. An explicitly injected
     // service (used by tests) always wins and ignores the account header.
     const svc = (c: Context): CloudProxyService =>
-        injectedService ?? serviceForAccount(c.req.header(ACCOUNT_HEADER) ?? c.req.query('account'))
+        injectedService ?? serviceForContext(
+            c.req.header(ACCOUNT_HEADER) ?? c.req.query('account'),
+            c.req.header(AZURE_SUBSCRIPTION_HEADER) ?? c.req.query('subscription'),
+        )
 
     app.get('/', (c) => c.json(svc(c).clouds()))
 

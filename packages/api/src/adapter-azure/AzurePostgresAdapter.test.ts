@@ -8,6 +8,16 @@ const SERVERS_PATH = '/subscriptions/00000000-0000-0000-0000-000000000000/resour
 const API_VERSION = '?api-version=2025-08-01'
 
 describe('AzurePostgresAdapter', () => {
+    test('lists PostgreSQL servers in the selected subscription', async () => {
+        const subscriptionId = '11111111-2222-3333-4444-555555555555'
+        const path = SERVERS_PATH.replace('00000000-0000-0000-0000-000000000000', subscriptionId) + API_VERSION
+        const calls: Array<{path: string; init: RequestInit}> = []
+        const adapter = new AzurePostgresAdapter(testClient({[path]: {value: []}}, calls), undefined, subscriptionId)
+
+        await expect(adapter.list()).resolves.toEqual([])
+        expect(calls[0].path).toBe(path)
+    })
+
     test('normalizes PostgreSQL flexible servers', async () => {
         const adapter = new AzurePostgresAdapter(testClient({
             [`${SERVERS_PATH}${API_VERSION}`]: {

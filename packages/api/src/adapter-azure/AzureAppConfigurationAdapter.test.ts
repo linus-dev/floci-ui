@@ -1,5 +1,5 @@
 import {describe, expect, test} from 'bun:test'
-import type {AzureRuntimeClient, AzureRuntimeFetchOptions} from '../azure'
+import {azureAccountNameForSubscription, type AzureRuntimeClient, type AzureRuntimeFetchOptions} from '../azure'
 import {ConflictError, NotFoundError} from '../cloud-spi/errors'
 import {
     AzureAppConfigurationAdapter,
@@ -14,6 +14,18 @@ interface RecordedCall {
 }
 
 describe('AzureAppConfigurationAdapter', () => {
+    test('reads a separate App Configuration namespace for another subscription', async () => {
+        const accountName = azureAccountNameForSubscription('11111111-2222-3333-4444-555555555555')
+        const path = `/${accountName}-appconfig/kv?api-version=2026-04-01`
+        const calls: RecordedCall[] = []
+        const adapter = new AzureAppConfigurationAdapter(testClient({
+            [path]: {items: [keyValue('Other:Key', null)]},
+        }, calls, accountName))
+
+        await expect(adapter.list()).resolves.toMatchObject([{name: 'Other:Key'}])
+        expect(calls.map((call) => call.path)).toEqual([path])
+    })
+
     test('exposes the Azure App Configuration CRUD schema', () => {
         const schema = new AzureAppConfigurationAdapter(testClient({})).schema()
 
@@ -357,11 +369,12 @@ function keyValue(
 function testClient(
     responses: Record<string, unknown | unknown[]>,
     calls: RecordedCall[] = [],
+    accountName = 'devstoreaccount1',
 ): AzureRuntimeClient {
     const responseIndexes = new Map<string, number>()
     return {
         endpoint: 'http://localhost:4577',
-        accountName: 'devstoreaccount1',
+        accountName,
         async fetch(path: string, init: RequestInit, options: AzureRuntimeFetchOptions = {}) {
             calls.push({path, init, options})
             if (!(path in responses)) {

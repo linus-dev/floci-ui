@@ -11,6 +11,8 @@ import {useQuery} from '@tanstack/react-query'
 import {getCloudStatus} from '@/api/cloudProxyClient'
 import {useCloudServicesQuery} from '@/api/queries/cloudQueries'
 import {AccountSwitcher} from '@/components/AccountSwitcher'
+import {AzureSubscriptionSwitcher} from '@/components/AzureSubscriptionSwitcher'
+import {useAzureSubscriptionId} from '@/lib/azureSubscriptionStore'
 import {serviceIcon} from '@/components/serviceIcons'
 import type {CloudProvider, CloudServiceDescriptor, RuntimeReachability} from '@/types/cloud'
 
@@ -161,6 +163,7 @@ function groupByGroup(services: CloudServiceDescriptor[]): Array<[string, CloudS
 export function Layout() {
     const location = useLocation()
     const activeCloud = activeCloudFromPath(location.pathname)
+    const azureSubscriptionId = useAzureSubscriptionId()
     const {theme} = useTheme()
     const {collapsed, toggle: toggleSidebar, toggleRef} = useSidebar()
     const isDark = theme === 'dark'
@@ -215,7 +218,8 @@ export function Layout() {
                 <header className="topbar">
                     <TopbarSearch/>
                     <div id="topbar-status" className="topbar-status"/>
-                    <AccountSwitcher/>
+                    {activeCloud === 'aws' && <AccountSwitcher/>}
+                    {activeCloud === 'azure' && <AzureSubscriptionSwitcher/>}
                     <div className={`connection ${isConnected ? 'connected' : 'disconnected'}`}>
                         <span className={connectionDotClass(status)} aria-hidden="true"/>
                         <span className="connection-state">{connectionLabel}</span>
@@ -223,7 +227,7 @@ export function Layout() {
                     </div>
                 </header>
                 <main id="main-content" className="main" tabIndex={-1}>
-                    <Outlet/>
+                    <Outlet key={activeCloud === 'azure' ? azureSubscriptionId : activeCloud}/>
                 </main>
             </div>
         </div>

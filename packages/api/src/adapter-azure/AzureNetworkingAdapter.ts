@@ -66,7 +66,7 @@ interface AzureVnet {
  * of returning ConflictError.
  *
  * Module-level, not a field on the adapter: `cloudProxy.ts` builds one
- * `AzureNetworkingAdapter` per account-scoped registry (`serviceForAccount`'s
+ * `AzureNetworkingAdapter` per cloud-context registry (`serviceForContext`'s
  * cache), but Azure is account-neutral here — every instance talks to the
  * same `AzureRestRuntimeClient` singleton in `azure.ts` and the same
  * floci-az runtime. A per-instance lock would only serialize creates issued

@@ -12,6 +12,7 @@ import type {
 } from '../cloud-spi/types'
 import {AzurePostgresAdapter, isPostgresServerResourceId} from './AzurePostgresAdapter'
 import {AzureSqlAdapter, isSqlServerResourceId} from './AzureSqlAdapter'
+import {azure, azureSubscriptionId, type AzureRuntimeClient} from '../azure'
 
 interface AzureDatabaseEngineAdapter {
     list(query?: ResourceQuery): Promise<CloudResource[]>
@@ -31,6 +32,13 @@ export class AzureDatabaseAdapter implements CloudServiceAdapter {
         private readonly sql: AzureDatabaseEngineAdapter = new AzureSqlAdapter(),
         private readonly postgres: AzureDatabaseEngineAdapter = new AzurePostgresAdapter(),
     ) {}
+
+    static forSubscription(client: AzureRuntimeClient = azure, subscriptionId: string = azureSubscriptionId()): AzureDatabaseAdapter {
+        return new AzureDatabaseAdapter(
+            new AzureSqlAdapter(client, undefined, subscriptionId),
+            new AzurePostgresAdapter(client, undefined, subscriptionId),
+        )
+    }
 
     schema(): ServiceSchema {
         return azureDatabaseSchema()

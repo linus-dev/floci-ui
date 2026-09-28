@@ -65,7 +65,10 @@ export class AzureAksAdapter implements CloudServiceAdapter {
 
     private subscriptionId: string | null = null
 
-    constructor(private readonly client: AzureRuntimeClient = azure) {}
+    constructor(
+        private readonly client: AzureRuntimeClient = azure,
+        private readonly selectedSubscriptionId?: string,
+    ) {}
 
     schema(): ServiceSchema {
         return azureAksSchema()
@@ -100,8 +103,9 @@ export class AzureAksAdapter implements CloudServiceAdapter {
         throw new NotSupportedError('AKS cluster deletion is not supported from the dynamic Cloud Explorer.')
     }
 
-    /** The runtime ignores the subscription id, but a real one keeps ids honest. */
+    /** Use the selected subscription, or discover the runtime default. */
     private async subscription(): Promise<string> {
+        if (this.selectedSubscriptionId) return this.selectedSubscriptionId
         if (this.subscriptionId) return this.subscriptionId
 
         const body = await this.json<ArmList<{subscriptionId?: string}>>('/subscriptions')

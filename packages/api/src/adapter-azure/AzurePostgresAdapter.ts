@@ -80,6 +80,7 @@ export class AzurePostgresAdapter implements CloudServiceAdapter {
     constructor(
         private readonly client: AzureRuntimeClient = azure,
         private readonly dataClient: SqlDataClient = new PostgresDataClient(),
+        private readonly subscriptionId: string = azureSubscriptionId(),
     ) {}
 
     schema(): ServiceSchema {
@@ -87,13 +88,13 @@ export class AzurePostgresAdapter implements CloudServiceAdapter {
     }
 
     async list(query: ResourceQuery = {}): Promise<CloudResource[]> {
-        const body = await this.postgresJson<AzurePostgresListResponse>(postgresServersPath(), {method: 'GET'}, true)
+        const body = await this.postgresJson<AzurePostgresListResponse>(postgresServersPath(this.subscriptionId), {method: 'GET'}, true)
         return filterBySearch((body?.value ?? []).map(toPostgresResource), query.search)
     }
 
     async get(id: string): Promise<CloudResource | null> {
         const serverName = postgresServerName(id)
-        const body = await this.postgresJson<AzurePostgresRecord>(postgresServerPath(serverName), {method: 'GET'}, true)
+        const body = await this.postgresJson<AzurePostgresRecord>(postgresServerPath(this.subscriptionId, serverName), {method: 'GET'}, true)
         return body ? toPostgresResource(body) : null
     }
 
@@ -108,7 +109,7 @@ export class AzurePostgresAdapter implements CloudServiceAdapter {
         if (!administratorLogin) throw new ValidationError('administratorLogin is required')
         if (!administratorLoginPassword) throw new ValidationError('administratorLoginPassword is required')
 
-        const body = await this.postgresJson<AzurePostgresRecord>(postgresServerPath(serverName), {
+        const body = await this.postgresJson<AzurePostgresRecord>(postgresServerPath(this.subscriptionId, serverName), {
             method: 'PUT',
             body: JSON.stringify({
                 location,
@@ -126,7 +127,7 @@ export class AzurePostgresAdapter implements CloudServiceAdapter {
     }
 
     async delete(id: string): Promise<void> {
-        await this.postgresFetch(postgresServerPath(postgresServerName(id)), {method: 'DELETE'})
+        await this.postgresFetch(postgresServerPath(this.subscriptionId, postgresServerName(id)), {method: 'DELETE'})
     }
 
     async listSqlDatabases(serverId: string, connection: SqlConnectionInput): Promise<SqlDatabase[]> {
@@ -213,12 +214,12 @@ export function isPostgresServerResourceId(id: string): boolean {
     return id.startsWith(RESOURCE_ID_PREFIX)
 }
 
-function postgresServersPath(): string {
-    return `/subscriptions/${encodeURIComponent(azureSubscriptionId())}/resourceGroups/${encodeURIComponent(azureResourceGroup())}/providers/Microsoft.DBforPostgreSQL/flexibleServers`
+function postgresServersPath(subscriptionId: string): string {
+    return `/subscriptions/${encodeURIComponent(subscriptionId)}/resourceGroups/${encodeURIComponent(azureResourceGroup())}/providers/Microsoft.DBforPostgreSQL/flexibleServers`
 }
 
-function postgresServerPath(serverName: string): string {
-    return `${postgresServersPath()}/${encodeURIComponent(serverName)}`
+function postgresServerPath(subscriptionId: string, serverName: string): string {
+    return `${postgresServersPath(subscriptionId)}/${encodeURIComponent(serverName)}`
 }
 
 function postgresServerName(id: string): string {

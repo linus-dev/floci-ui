@@ -1,5 +1,11 @@
 import {afterEach, describe, expect, test} from 'bun:test'
-import {AzureRestRuntimeClient} from './azure'
+import {
+    AzureRestRuntimeClient,
+    azureAccountName,
+    azureAccountNameForSubscription,
+    azureSubscriptionId,
+    resolveAzureSubscriptionId,
+} from './azure'
 
 const originalFetch = globalThis.fetch
 
@@ -8,6 +14,13 @@ afterEach(() => {
 })
 
 describe('AzureRestRuntimeClient', () => {
+    test('keeps the current App Configuration data in the default subscription', () => {
+        expect(azureAccountNameForSubscription(resolveAzureSubscriptionId())).toBe(azureAccountName())
+        expect(azureAccountNameForSubscription(azureSubscriptionId())).toBe(azureAccountName())
+        expect(azureAccountNameForSubscription('11111111-2222-3333-4444-555555555555'))
+            .toBe(`${azureAccountName()}-sub-11111111222233334444555555555555`)
+    })
+
     test('can omit the Blob Storage API version header', async () => {
         let requestHeaders: HeadersInit | undefined
         globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {

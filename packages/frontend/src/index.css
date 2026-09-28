@@ -607,6 +607,13 @@ pre,
     padding: 2px 4px 6px;
 }
 
+.account-context-note {
+    margin: 0 4px 8px;
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
 .account-recents {
     display: flex;
     flex-direction: column;

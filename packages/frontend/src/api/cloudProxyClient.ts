@@ -38,6 +38,7 @@ import type {
 } from "@/types/resource";
 import type { ServiceSchema } from "@/types/schema";
 import { getAccountId } from "@/lib/accountStore";
+import { getAzureSubscriptionId } from "@/lib/azureSubscriptionStore";
 
 type CloudPathParams = Record<string, string>;
 
@@ -329,7 +330,7 @@ export function storageObjectDownloadUrl(
   // request interceptor — pass the account as a query param the API also reads.
   return `${API_BASE_URL}${path}?key=${encodeURIComponent(
     key,
-  )}&account=${encodeURIComponent(getAccountId())}`;
+  )}&account=${encodeURIComponent(getAccountId())}&subscription=${encodeURIComponent(getAzureSubscriptionId())}`;
 }
 
 export async function deleteStorageObject(

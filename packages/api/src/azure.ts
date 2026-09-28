@@ -61,6 +61,27 @@ export function azureSubscriptionId(): string {
     return process.env.FLOCI_AZURE_SUBSCRIPTION_ID ?? '00000000-0000-0000-0000-000000000000'
 }
 
+const SUBSCRIPTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function isAzureSubscriptionId(value: string | null | undefined): value is string {
+    return typeof value === 'string' && SUBSCRIPTION_ID_PATTERN.test(value)
+}
+
+export function resolveAzureSubscriptionId(value?: string | null): string {
+    return isAzureSubscriptionId(value)
+        ? value.toLowerCase()
+        : azureSubscriptionId().toLowerCase()
+}
+
+/** Local data-plane namespace for a subscription; the default keeps existing data. */
+export function azureAccountNameForSubscription(subscriptionId: string): string {
+    const account = azureAccountName()
+    const selected = resolveAzureSubscriptionId(subscriptionId)
+    return selected === resolveAzureSubscriptionId()
+        ? account
+        : `${account}-sub-${selected.replace(/-/g, '')}`
+}
+
 export function azureResourceGroup(): string {
     return process.env.FLOCI_AZURE_RESOURCE_GROUP ?? 'floci-local'
 }

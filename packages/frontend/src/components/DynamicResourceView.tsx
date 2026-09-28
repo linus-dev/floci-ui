@@ -41,6 +41,7 @@ import { AppConfigPanel } from "@/components/AppConfigPanel";
 import { AzureAppConfigurationImportPanel } from "@/components/AzureAppConfigurationImportPanel";
 import { KmsCryptoPanel } from "@/components/KmsCryptoPanel";
 import { SageMakerDashboardPanel } from "@/components/SageMakerDashboardPanel";
+import { useAzureSubscriptionId } from "@/lib/azureSubscriptionStore";
 
 interface DynamicResourceViewProps {
   cloud: CloudProvider;
@@ -63,6 +64,7 @@ export function DynamicResourceView({
   onOpenInfo,
 }: DynamicResourceViewProps) {
   const qc = useQueryClient();
+  const azureSubscriptionId = useAzureSubscriptionId();
   const [search, setSearch] = useState("");
   const [databaseTab, setDatabaseTab] = useState<"instances" | "snapshots">("instances");
   const [selected, setSelected] = useState<CloudResource | undefined>();
@@ -85,8 +87,8 @@ export function DynamicResourceView({
   };
 
   const resourcesKey = useMemo(
-    () => ["cloud-resources", cloud, service, search],
-    [cloud, service, search],
+    () => ["cloud-resources", cloud, service, cloud === "azure" ? azureSubscriptionId : "", search],
+    [cloud, service, azureSubscriptionId, search],
   );
 
   const schemaQuery = useQuery({

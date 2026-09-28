@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Code2, Database, Play, Plug, RefreshCw, Table2, Unplug } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAccountId } from "@/lib/accountStore";
+import { useAzureSubscriptionId } from "@/lib/azureSubscriptionStore";
 import {
   listSqlDatabases,
   listSqlTables,
@@ -39,6 +40,8 @@ export function AzureSqlPanel({
   runtimeReachable,
 }: AzureSqlPanelProps) {
   const accountId = useAccountId();
+  const azureSubscriptionId = useAzureSubscriptionId();
+  const contextId = cloud === 'azure' ? azureSubscriptionId : accountId;
   const serverId = resource?.id;
   const engine: SqlEngine =
     resource?.type === "postgres-flexible-server" ? "postgresql" : "azure-sql";
@@ -62,7 +65,7 @@ export function AzureSqlPanel({
   const databaseExists = databases.some((database) => database.name === selectedDatabase);
 
   const tablesQuery = useQuery({
-    queryKey: ['sql-tables', accountId, cloud, serverId, engine, selectedDatabase, username],
+    queryKey: ['sql-tables', contextId, cloud, serverId, engine, selectedDatabase, username],
     queryFn: ({signal}) => listSqlTables(cloud, serverId ?? "", engine, selectedDatabase, credentials, signal),
     enabled: connected && databaseExists && runtimeReachable,
     gcTime: 0,

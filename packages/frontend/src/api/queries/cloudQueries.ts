@@ -7,6 +7,7 @@ import {
     listClouds,
 } from '@/api/cloudProxyClient'
 import type {CloudProvider, CloudServiceDescriptor, CloudServiceType, CloudStatus} from '@/types/cloud'
+import {getAzureSubscriptionId} from '@/lib/azureSubscriptionStore'
 
 /**
  * Shared cloud queries.
@@ -22,7 +23,7 @@ export const cloudQueryKeys = {
     serviceStatus: (cloud: CloudProvider, service: CloudServiceType) =>
         ['cloud-service-status', cloud, service] as const,
     resources: (cloud: CloudProvider, service: CloudServiceType) =>
-        ['cloud-console-resources', cloud, service] as const,
+        ['cloud-console-resources', cloud, service, cloud === 'azure' ? getAzureSubscriptionId() : ''] as const,
 }
 
 export function useCloudsQuery() {

@@ -183,21 +183,24 @@ export class AzureNoSqlAdapter implements CloudServiceAdapter {
 
     private async fetchWithFallbacks(path: string, init: RequestInit, options?: {emptyOnNotFound?: boolean}): Promise<Response | null> {
         const attempts = [
-            path,
             `${cosmosAccountPath(this.client)}${path}`,
             `${cosmosNoSqlAccountPath(this.client)}${path}`,
         ]
         const failures: string[] = []
+        let notFound = false
 
         for (const attempt of attempts) {
             try {
-                return await this.client.fetch(attempt, init, options)
+                const response = await this.client.fetch(attempt, init, options)
+                if (response) return response
+                notFound = true
             } catch (error) {
                 if (!isRetriableRoutingError(error)) throw error
                 failures.push(`${attempt}: ${errorMessage(error)}`)
             }
         }
 
+        if (notFound) return null
         throw new CosmosNoSqlUnavailableError(`Cosmos NoSQL request failed on all known routes. ${failures.join(' | ')}`)
     }
 }

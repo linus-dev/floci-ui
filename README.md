@@ -48,6 +48,34 @@ preserving an existing PostgreSQL sidecar during migration. On a host where
 
 Open [http://localhost:4500](http://localhost:4500).
 
+### Azure subscriptions
+
+On Azure pages, use the **Subscription** selector in the top bar to enter a
+subscription UUID. Floci UI remembers recent choices in this browser. With the
+default API configuration, the initial subscription is
+`00000000-0000-0000-0000-000000000000`, preserving existing App Configuration,
+storage, and database resources in that scope. VM and AKS resources previously
+created through Floci UI may instead be under Floci AZ's default ARM subscription
+`00000000-0000-0000-0000-000000000001`; select that ID to view them.
+
+Azure resources in the UI are scoped to the selected subscription. Storage,
+Cosmos DB, Service Bus, Key Vault, and App Configuration use a separate local
+account name for each subscription. For the default subscription, Floci UI
+continues to use the configured `FLOCI_AZURE_ACCOUNT_NAME` (normally
+`devstoreaccount1`). For another subscription, its local data service account name is
+`<FLOCI_AZURE_ACCOUNT_NAME>-sub-<subscription UUID without hyphens>`.
+Applications that access Floci AZ directly must use that account name in their
+data service endpoints. For example, the App Configuration endpoint is
+`http://localhost:4577/devstoreaccount1-sub-11111111222233334444555555555555-appconfig`
+for subscription `11111111-2222-3333-4444-555555555555`). The UI's selector
+does not change an application's connection settings.
+
+Azure SQL, PostgreSQL, virtual machines, and AKS use the selected subscription
+in their ARM requests. Switching subscriptions also refreshes resource lists
+and clears the previous selection from the UI. Service Bus namespace names are
+globally unique across subscriptions, as they are in Azure, while each
+subscription sees only the namespaces it owns.
+
 ## What The UI Actually Exposes Today
 
 The sidebar and Console Home are rendered from `GET /api/clouds/:cloud/services`,

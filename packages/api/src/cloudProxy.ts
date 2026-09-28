@@ -40,21 +40,24 @@ import {AwsAppConfigAdapter} from './adapter-aws/AwsAppConfigAdapter'
 import {AwsKinesisAdapter} from './adapter-aws/AwsKinesisAdapter'
 import {AwsSageMakerAdapter} from './adapter-aws/AwsSageMakerAdapter'
 import {awsClientsForAccount, resolveAccountId} from './aws'
+import {AzureRestRuntimeClient, azureAccountNameForSubscription, azureEndpoint, resolveAzureSubscriptionId} from './azure'
 import {createEc2Service} from './services/ec2'
 import {createEksService} from './services/eks'
 import {createRdsService} from './services/rds'
 
 /**
- * Build the adapter registry for an account. The account id drives the AWS SDK
- * credentials (see aws.ts), so every AWS call is isolated to that account; Azure
- * and GCP adapters use their own runtime auth model and are account-neutral.
+ * Build adapters for the selected AWS account and Azure subscription. AWS uses
+ * account-specific SDK credentials; Azure uses the selected ARM subscription and
+ * a distinct local data-plane namespace for each non-default subscription.
  *
  * Exported separately from the service so tests can assert registry contents —
  * notably that every adapter implements what its schema advertises — without
  * reaching into private state.
  */
-export function createCloudAdapterRegistry(accountId?: string | null): CloudAdapterRegistry {
+export function createCloudAdapterRegistry(accountId?: string | null, azureSubscription?: string | null): CloudAdapterRegistry {
     const clients = awsClientsForAccount(accountId)
+    const subscriptionId = resolveAzureSubscriptionId(azureSubscription)
+    const azureClient = new AzureRestRuntimeClient(azureEndpoint(), azureAccountNameForSubscription(subscriptionId))
     const ec2Service = createEc2Service(clients.ec2)
 
     return new CloudAdapterRegistry([
@@ -79,12 +82,12 @@ export function createCloudAdapterRegistry(accountId?: string | null): CloudAdap
         new AwsAppConfigAdapter(clients.appConfig),
         new AwsKinesisAdapter(clients.kinesis),
         new AwsSageMakerAdapter(clients.sagemaker),
-        new AzureStorageAdapter(),
-        new AzureServiceBusAdapter(),
-        new AzureDatabaseAdapter(),
-        new AzureAksAdapter(),
-        new AzureNoSqlAdapter(),
-        new AzureComputeAdapter(),
+        new AzureStorageAdapter(azureClient),
+        new AzureServiceBusAdapter(azureClient),
+        AzureDatabaseAdapter.forSubscription(azureClient, subscriptionId),
+        new AzureAksAdapter(azureClient, subscriptionId),
+        new AzureNoSqlAdapter(azureClient),
+        new AzureComputeAdapter(azureClient, subscriptionId),
         new GcpStorageAdapter(),
         new GcpCloudFunctionsAdapter(),
         new GcpCloudSqlAdapter(),
@@ -94,25 +97,27 @@ export function createCloudAdapterRegistry(accountId?: string | null): CloudAdap
         new GcpSecretManagerAdapter(),
         new GcpSchedulerAdapter(),
         new AwsSqsAdapter(clients.sqs),
-        new AzureServerlessAdapter(),
-        new AzureKeyVaultAdapter(),
-        new AzureAppConfigurationAdapter(),
+        new AzureServerlessAdapter(azureClient),
+        new AzureKeyVaultAdapter(azureClient),
+        new AzureAppConfigurationAdapter(azureClient),
     ])
 }
 
-export function createCloudProxyService(accountId?: string | null): CloudProxyService {
-    return new CloudProxyService(createCloudAdapterRegistry(accountId))
+export function createCloudProxyService(accountId?: string | null, azureSubscription?: string | null): CloudProxyService {
+    return new CloudProxyService(createCloudAdapterRegistry(accountId, azureSubscription))
 }
 
 const serviceCache = new Map<string, CloudProxyService>()
 
-/** Return a cached account-scoped CloudProxyService, building it on first use. */
-export function serviceForAccount(accountId?: string | null): CloudProxyService {
+/** Return a cached service for the selected cloud contexts. */
+export function serviceForContext(accountId?: string | null, azureSubscription?: string | null): CloudProxyService {
     const id = resolveAccountId(accountId)
-    let service = serviceCache.get(id)
+    const subscriptionId = resolveAzureSubscriptionId(azureSubscription)
+    const key = `${id}:${subscriptionId}`
+    let service = serviceCache.get(key)
     if (!service) {
-        service = createCloudProxyService(id)
-        serviceCache.set(id, service)
+        service = createCloudProxyService(id, subscriptionId)
+        serviceCache.set(key, service)
     }
     return service
 }

@@ -110,6 +110,19 @@ const databaseSnapshot: DatabaseSnapshot = {
     metadata: {snapshotType: 'manual'},
 }
 
+describe('Azure subscription selection', () => {
+    test('rejects malformed subscription IDs from headers and direct-link queries', async () => {
+        const app = appWithRoutes()
+        const headerResponse = await app.request('/api/clouds/azure/services', {
+            headers: {'x-floci-azure-subscription-id': 'not-a-uuid'},
+        })
+        const queryResponse = await app.request('/api/clouds/azure/services?subscription=not-a-uuid')
+
+        expect(headerResponse.status).toBe(400)
+        expect(queryResponse.status).toBe(400)
+    })
+})
+
 describe('database snapshot routes', () => {
     test('lists snapshots with the exact optional instance filter', async () => {
         let delegatedIdentifier: string | undefined

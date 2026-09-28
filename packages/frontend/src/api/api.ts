@@ -1,5 +1,6 @@
 import { EndpointRegistry, HttpClient } from "./HttpClient";
 import { ACCOUNT_HEADER, getAccountId } from "@/lib/accountStore";
+import { AZURE_SUBSCRIPTION_HEADER, getAzureSubscriptionId } from "@/lib/azureSubscriptionStore";
 
 export class AuthenticationRequiredError extends Error {
   constructor() {
@@ -914,11 +915,11 @@ export function createApiClient(
     endpointRegistry,
   );
 
-  // Account scope — every request carries the active AWS account so Floci can
-  // isolate resources per account (the API maps this header to its SDK creds).
+  // Each cloud request carries the selected AWS account and Azure subscription.
   client.addRequestInterceptor((url, init) => {
     const headers = (init.headers ?? {}) as Record<string, string>;
     headers[ACCOUNT_HEADER] = getAccountId();
+    headers[AZURE_SUBSCRIPTION_HEADER] = getAzureSubscriptionId();
     init.headers = headers;
     return { url, init };
   });
