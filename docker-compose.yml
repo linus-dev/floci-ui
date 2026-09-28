@@ -39,54 +39,6 @@ services:
 
       PORT: "4501"
 
-    depends_on:
-      - floci-az
-    restart: unless-stopped
-    networks:
-      - floci_default
-
-  floci-az:
-    image: floci/floci-az:latest
-    ports:
-      - "4577:4577"
-
-    volumes:
-      # Persist Floci AZ state
-      - ./data/floci-az:/app/data
-
-      # Required because Azure PostgreSQL instances
-      # are spawned as separate Docker containers
-      - /var/run/docker.sock:/var/run/docker.sock
-
-    environment:
-      # --------------------------------------------------
-      # General Floci AZ configuration
-      # --------------------------------------------------
-
-      FLOCI_AZ_STORAGE_MODE: hybrid
-      FLOCI_AZ_STORAGE_PATH: /app/data
-      FLOCI_AZ_TLS_ENABLED: "true"
-      FLOCI_AZ_HOSTNAME: "192.168.50.170"
-
-      # Sidecar containers should join the same Docker network
-      FLOCI_AZ_SERVICES_DOCKER_NETWORK: floci_default
-
-      # --------------------------------------------------
-      # Azure Database for PostgreSQL
-      # --------------------------------------------------
-
-      FLOCI_AZ_SERVICES_POSTGRES_ENABLED: "true"
-
-      # We want an actual PostgreSQL container,
-      # not management-plane-only emulation
-      FLOCI_AZ_SERVICES_POSTGRES_MOCKED: "false"
-
-      # PostgreSQL 18 + PostGIS 3.6
-      FLOCI_AZ_SERVICES_POSTGRES_IMAGE: imresamu/postgis-arm64:18-3.6-alpine
-
-      # Give PostGIS/PostgreSQL some time to start
-      FLOCI_AZ_SERVICES_POSTGRES_STARTUP_TIMEOUT_SECONDS: "60"
-
     restart: unless-stopped
     networks:
       - floci_default
@@ -94,3 +46,5 @@ services:
 networks:
   floci_default:
     name: floci_default
+    # Floci AZ owns its own Compose project; both projects join this shared network.
+    external: true

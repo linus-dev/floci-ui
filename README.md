@@ -26,17 +26,25 @@ No fake resources, no demo rows, and no mock operational data are shown in norma
 
 ## Quick Start
 
-AWS-only stack:
+Create the shared Docker network once:
 
 ```bash
-docker compose up
+docker network create floci_default
 ```
 
-Full multi-cloud stack:
+Start Floci AZ from the sibling `floci-az` checkout, then start the UI here:
 
 ```bash
-docker compose --profile multicloud up
+cd ../floci-az
+docker compose up -d --build
+cd ../floci-ui
+docker compose up -d
 ```
+
+The Floci AZ Compose file defaults to the existing state directory at
+`../floci-ui/data/floci-az`. See its README for changing that path and for
+preserving an existing PostgreSQL sidecar during migration. On a host where
+`floci_default` already exists, skip the network creation command.
 
 Open [http://localhost:4500](http://localhost:4500).
 
@@ -406,22 +414,18 @@ Browser
 
 ### Docker Compose
 
-Default compose stack:
+This Compose project starts:
 
 - `floci-ui` on `http://localhost:4500`
 - `floci-api` on `http://localhost:4501`
-- `floci` on `http://localhost:4566`
 
-Start AWS-only:
+Floci AZ starts from the sibling checkout and joins the same external
+`floci_default` network. See [Quick Start](#quick-start) for startup order.
+
+Start the UI and API:
 
 ```bash
 docker compose up
-```
-
-Start AWS + Azure + GCP:
-
-```bash
-docker compose --profile multicloud up
 ```
 
 Convenience targets:
